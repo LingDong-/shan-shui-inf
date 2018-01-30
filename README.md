@@ -1,2 +1,2 @@
-# shan-shui-inf
+# {Shan,Shui}*
 Procedurally generated Chinese painting.
