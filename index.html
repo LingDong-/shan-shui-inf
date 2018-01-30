@@ -1473,7 +1473,7 @@ var PolyTools = new function(){
         },
         function(i,j){
           var ns = Noise.noise(i*0.2,j*0.05,seed+20*Math.PI)
-          return (i % 2 == 0 && (j==1 || j == ptlist[i].length-2)) && (ns*ns*ns*ns<0.003)
+          return (i % 2 == 0 && (j==1 || j == ptlist[i].length-2)) && (ns*ns*ns*ns<0.002)
         },
         function(veglist,i){
           return true
@@ -2714,9 +2714,9 @@ var PolyTools = new function(){
     }
 
     for (var i = xmin; i < xmax; i+=xstep){
-      if (Math.random()<0.3){
+      if (Math.random()<0.2){
         var r = {tag:"boat",x:i,y:300+Math.random()*390}
-        chadd(r,300)
+        chadd(r,400)
       }
     }
 
