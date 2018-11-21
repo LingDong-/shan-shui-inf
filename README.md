@@ -1,6 +1,6 @@
 # {Shan, Shui}*
 Procedurally-generated vector-format infinitely-scrolling Chinese landscape for the browser.
-Generate your own on https://lingdong-.github.io/shan-shui-inf/.
+Generate your own on https://lingdong-.github.io/shan-shui-inf/ (or [Alternative link](https://shan-shui-inf.glitch.me)).
 
 Some examples:
 ![Screenshot1](/screenshots/screen001.jpg?raw=true "")
