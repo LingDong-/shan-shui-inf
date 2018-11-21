@@ -4092,11 +4092,11 @@
   " +
           "height:" +
           MEM.windy +
-          "px",
+          "px"
       );
     document.getElementById(id + ".t").setAttribute(
       "style",
-      "vertical-align:middle; display:table-cell",
+      "vertical-align:middle; display:table-cell"
       //"position:absolute; top:"+(MEM.windy/2-20)+"px; left:"+(MEM.windx+20)+"px;"
     );
   }
@@ -4129,6 +4129,7 @@
     window.location.href = u + "?seed=" + s;
     //window.location.reload(true)
   }
+  var btnHoverCol = "rgba(0,0,0,0.1)";
 </script>
 
 <body style="margin:0">
@@ -4152,9 +4153,10 @@
       display: table;
       cursor: pointer;
       "
-      onmouseover="document.getElementById('SET_BTN').style.backgroundColor='rgba(0,0,0,0.1)'"
+      onmouseover="document.getElementById('SET_BTN').style.backgroundColor=btnHoverCol"
       onmouseout="document.getElementById('SET_BTN').style.backgroundColor='rgba(0,0,0,0)'"
       onclick="toggleVisible('MENU');toggleText('SET_BTN.t','&#x2630;','&#x2715;')"
+      title="Settings"
     >
       <div style="display:table-cell; vertical-align: middle;">
         <font id="SET_BTN.t" size="4px"> &#x2630; </font>
@@ -4163,7 +4165,7 @@
         window.addEventListener("scroll", function(e) {
           document.getElementById("SETTING").style.left = Math.max(
             4,
-            40 - window.scrollX,
+            40 - window.scrollX
           );
         });
       </script>
@@ -4247,6 +4249,38 @@
         </tr>
       </table>
     </div>
+  </div>
+
+  <div
+    id="SOURCE_BTN"
+    style="
+      position:fixed; 
+      z-index:1000; 
+      left: 77; 
+      top: 3;
+      width:32;
+      height:32;
+      color:rgba(0,0,0,0.4);
+      border: 1px solid rgba(0,0,0,0.4);
+      text-align: center;
+      display: table;
+      cursor: pointer;"
+    onmouseover="document.getElementById('SOURCE_BTN').style.backgroundColor=btnHoverCol"
+    onmouseout="document.getElementById('SOURCE_BTN').style.backgroundColor='rgba(0,0,0,0)'"
+    onclick="window.location='https://github.com/LingDong-/shan-shui-inf';"
+    title="Fork me on Github!"
+  >
+    <div style="display:table-cell; vertical-align: middle;">
+      <font id="SET_BTN.t" size="4px"> &lt;/&gt; </font>
+    </div>
+    <script>
+      window.addEventListener("scroll", function(e) {
+        document.getElementById("SOURCE_BTN").style.left = Math.max(
+          41,
+          77 - window.scrollX
+        );
+      });
+    </script>
   </div>
 
   <table style="border-bottom: 1px solid rgba(0,0,0,0.1);">
