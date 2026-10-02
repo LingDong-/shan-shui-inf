@@ -76,13 +76,166 @@
     }
   }
   SEED = "" + new Date().getTime();
+  PALETTE_MODE = "ink";
+  PARALLAX_MODE = 1;
   parseArgs({
     seed: function(x) {
       SEED = x == "" ? SEED : x;
     },
+    palette: function(x) {
+      PALETTE_MODE = x == "" ? "ink" : x;
+    },
+    parallax: function(x) {
+      PARALLAX_MODE = (x === "0" || x === "false") ? 0 : 1;
+    },
   });
   Math.seed(SEED);
   console.log(Prng.seed);
+
+  var PALETTE = {
+    ink: [
+      [23, 24, 23],    // #171817
+      [37, 37, 34],    // #252522
+      [58, 58, 53],    // #3A3A35
+      [76, 76, 69]     // #4C4C45
+    ],
+    stone: [
+      [92, 91, 84],    // #5C5B54
+      [119, 118, 107], // #77766B
+      [146, 144, 135], // #929087
+      [170, 167, 154]  // #AAA79A
+    ],
+    jade: [
+      [69, 88, 73],    // #455849
+      [100, 123, 104], // #647B68
+      [126, 145, 123], // #7E917B
+      [154, 165, 141]  // #9AA58D
+    ],
+    slate: [
+      [62, 85, 92],    // #3E555C
+      [83, 107, 114],  // #536B72
+      [110, 130, 133], // #6E8285
+      [140, 153, 152]  // #8C9998
+    ],
+    fog: [
+      [200, 196, 181], // #C8C4B5
+      [222, 217, 201], // #DED9C9
+      [232, 227, 212], // #E8E3D4
+      [240, 235, 221]  // #F0EBDD
+    ]
+  };
+
+  function getColor(family, t, a) {
+    if (a === undefined || a === null) a = 1;
+    if (typeof a === "number") a = parseFloat(a.toFixed(3));
+    if (typeof PALETTE_MODE !== "undefined" && PALETTE_MODE === "mono") {
+      if (family === "fog") return "rgba(255,255,255," + a + ")";
+      return "rgba(100,100,100," + a + ")";
+    }
+    var tones = PALETTE[family] || PALETTE.ink;
+    var rgb;
+    if (t === undefined || t === null) {
+      rgb = randChoice(tones);
+    } else if (typeof t === "number") {
+      var clampedT = Math.max(0, Math.min(1, t));
+      var idx = clampedT * (tones.length - 1);
+      var i0 = Math.floor(idx);
+      var i1 = Math.min(i0 + 1, tones.length - 1);
+      var f = idx - i0;
+      rgb = [
+        Math.round(tones[i0][0] + (tones[i1][0] - tones[i0][0]) * f),
+        Math.round(tones[i0][1] + (tones[i1][1] - tones[i0][1]) * f),
+        Math.round(tones[i0][2] + (tones[i1][2] - tones[i0][2]) * f)
+      ];
+    } else {
+      rgb = randChoice(tones);
+    }
+    return "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + a + ")";
+  }
+
+  function ink(a, t) {
+    return getColor("ink", t, a);
+  }
+  function stone(t, a) {
+    return getColor("stone", t, a);
+  }
+  function jade(t, a) {
+    return getColor("jade", t, a);
+  }
+  function slate(t, a) {
+    return getColor("slate", t, a);
+  }
+  function fog(t, a) {
+    return getColor("fog", t, a);
+  }
+  function fogMask() {
+    if (typeof PALETTE_MODE !== "undefined" && PALETTE_MODE === "mono") {
+      return "white";
+    }
+    return "#DED9C9";
+  }
+
+  function getDepth(tag, y) {
+    if (tag === "distmount") {
+      var d = 1.0 - Math.max(0, Math.min(0.15, (y - 200) / 500));
+      return parseFloat(Math.max(0.80, Math.min(1.0, d)).toFixed(3));
+    }
+    var ny = Math.max(250, Math.min(750, y));
+    var t = (ny - 250) / 500.0;
+    var depth = 1.0 - t * 0.85;
+    if (tag === "flatmount" || tag === "boat") {
+      depth = 0.95 - t * 0.85;
+    }
+    return parseFloat(Math.max(0.0, Math.min(1.0, depth)).toFixed(3));
+  }
+
+  function mountainCol(x, yoff, depth) {
+    var t = 1 - x;
+    var alpha = (Math.random() * 0.3 + 0.1).toFixed(3);
+    if (typeof PALETTE_MODE !== "undefined" && PALETTE_MODE === "mono") {
+      return "rgba(100,100,100," + (Math.random() * 0.3).toFixed(3) + ")";
+    }
+    if (depth === undefined || depth === null) {
+      depth = getDepth("mount", yoff || 500);
+    }
+    var stoneRGB = PALETTE.stone;
+    var slateRGB = PALETTE.slate;
+    var fogRGB = PALETTE.fog;
+
+    var clampedT = Math.max(0, Math.min(1, t));
+    var idx = clampedT * (stoneRGB.length - 1);
+    var i0 = Math.floor(idx);
+    var i1 = Math.min(i0 + 1, stoneRGB.length - 1);
+    var f = idx - i0;
+
+    var rStone = stoneRGB[i0][0] + (stoneRGB[i1][0] - stoneRGB[i0][0]) * f;
+    var gStone = stoneRGB[i0][1] + (stoneRGB[i1][1] - stoneRGB[i0][1]) * f;
+    var bStone = stoneRGB[i0][2] + (stoneRGB[i1][2] - stoneRGB[i0][2]) * f;
+
+    var rSlate = slateRGB[i0][0] + (slateRGB[i1][0] - slateRGB[i0][0]) * f;
+    var gSlate = slateRGB[i0][1] + (slateRGB[i1][1] - slateRGB[i0][1]) * f;
+    var bSlate = slateRGB[i0][2] + (slateRGB[i1][2] - slateRGB[i0][2]) * f;
+
+    var rFog = fogRGB[i0][0] + (fogRGB[i1][0] - fogRGB[i0][0]) * f;
+    var gFog = fogRGB[i0][1] + (fogRGB[i1][1] - fogRGB[i0][1]) * f;
+    var bFog = fogRGB[i0][2] + (fogRGB[i1][2] - fogRGB[i0][2]) * f;
+
+    var r, g, b;
+    if (depth < 0.5) {
+      var ratio = depth / 0.5;
+      r = Math.round(rStone * (1 - ratio) + rSlate * ratio);
+      g = Math.round(gStone * (1 - ratio) + gSlate * ratio);
+      b = Math.round(bStone * (1 - ratio) + bSlate * ratio);
+    } else {
+      var ratio = (depth - 0.5) / 0.5;
+      r = Math.round(rSlate * (1 - ratio) + rFog * ratio);
+      g = Math.round(gSlate * (1 - ratio) + gFog * ratio);
+      b = Math.round(bSlate * (1 - ratio) + bFog * ratio);
+    }
+
+    var dAlpha = depth > 0.6 ? Math.max(0.05, parseFloat(alpha) * (1 - (depth - 0.6) * 0.8)) : alpha;
+    return "rgba(" + r + "," + g + "," + b + "," + dAlpha + ")";
+  }
 </script>
 
 <script id="PerlinNoise">
@@ -518,7 +671,7 @@
     var xof = args.xof != undefined ? args.xof : 0;
     var yof = args.yof != undefined ? args.yof : 0;
     var wid = args.wid != undefined ? args.wid : 2;
-    var col = args.col != undefined ? args.col : "rgba(200,200,200,0.9)";
+    var col = args.col != undefined ? args.col : ink(0.9);
     var noi = args.noi != undefined ? args.noi : 0.5;
     var out = args.out != undefined ? args.out : 1;
     var fun =
@@ -580,7 +733,7 @@
     var len = args.len != undefined ? args.len : 20;
     var wid = args.wid != undefined ? args.wid : 5;
     var ang = args.ang != undefined ? args.ang : 0;
-    var col = args.col != undefined ? args.col : "rgba(200,200,200,0.9)";
+    var col = args.col != undefined ? args.col : ink(0.9);
     var noi = args.noi != undefined ? args.noi : 0.5;
     var ret = args.ret != undefined ? args.ret : 0;
     var fun =
@@ -669,7 +822,7 @@
       args.col != undefined
         ? args.col
         : function(x) {
-            return "rgba(100,100,100," + (Math.random() * 0.3).toFixed(3) + ")";
+            return stone(1 - x, (Math.random() * 0.3).toFixed(3));
           };
     var dis =
       args.dis != undefined
@@ -724,7 +877,7 @@
           texlist[j].map(function(x) {
             return [x[0] + xof, x[1] + yof];
           }),
-          { col: "rgba(100,100,100,0.1)", wid: sha },
+          { col: slate(0.3, 0.15), wid: sha },
         );
       }
     }
@@ -745,7 +898,7 @@
       var args = args != undefined ? args : {};
       var hei = args.hei != undefined ? args.hei : 50;
       var wid = args.wid != undefined ? args.wid : 3;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : jade(0.5, 0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       reso = 10;
@@ -761,7 +914,7 @@
           .replace(")", "")
           .split(",");
       } else {
-        leafcol = ["100", "100", "100", "0.5"];
+        leafcol = ["69", "88", "73", "0.5"];
       }
       var canv = "";
       var line1 = [];
@@ -795,9 +948,10 @@
         line1.push([nx + (nslist[i][0] - 0.5) * wid - wid / 2, ny]);
         line2.push([nx + (nslist[i][1] - 0.5) * wid + wid / 2, ny]);
       }
+      var trunkCol = ink(0.8);
       canv +=
-        poly(line1, { fil: "none", str: col, wid: 1.5 }) +
-        poly(line2, { fil: "none", str: col, wid: 1.5 });
+        poly(line1, { fil: "none", str: trunkCol, wid: 1.5 }) +
+        poly(line2, { fil: "none", str: trunkCol, wid: 1.5 });
       return canv;
     };
     this.tree02 = function(x, y, args) {
@@ -805,7 +959,7 @@
       var hei = args.hei != undefined ? args.hei : 16;
       var wid = args.wid != undefined ? args.wid : 8;
       var clu = args.clu != undefined ? args.clu : 5;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : jade(0.5, 0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       var leafcol;
@@ -815,7 +969,7 @@
           .replace(")", "")
           .split(",");
       } else {
-        leafcol = ["100", "100", "100", "0.5"];
+        leafcol = ["69", "88", "73", "0.5"];
       }
 
       var canv = "";
@@ -825,7 +979,6 @@
           y + randGaussian() * clu * 4,
           {
             ang: Math.PI / 2,
-            col: "rgba(100,100,100,0.8)",
             fun: function(x) {
               return x <= 1
                 ? Math.pow(Math.sin(x * Math.PI) * x, 0.5)
@@ -849,7 +1002,7 @@
           : function(x) {
               return 0;
             };
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : jade(0.5, 0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       reso = 10;
@@ -865,7 +1018,7 @@
           .replace(")", "")
           .split(",");
       } else {
-        leafcol = ["100", "100", "100", "0.5"];
+        leafcol = ["69", "88", "73", "0.5"];
       }
       var canv = "";
       var blobs = "";
@@ -911,7 +1064,7 @@
         ]);
       }
       var lc = line1.concat(line2.reverse());
-      canv += poly(lc, { fil: "white", str: col, wid: 1.5 });
+      canv += poly(lc, { fil: fogMask(), str: ink(0.8), wid: 1.5 });
       canv += blobs;
       return canv;
     };
@@ -1040,7 +1193,7 @@
                 len: (15 + 12 * Math.random()) * wid,
                 ang:
                   ang / 2 + Math.PI / 2 + Math.PI * 0.2 * (Math.random() - 0.5),
-                col: "rgba(100,100,100," + (0.5 + dep * 0.2).toFixed(3) + ")",
+                col: jade(0.5, (0.5 + dep * 0.2).toFixed(3)),
                 fun: function(x) {
                   return x <= 1
                     ? Math.pow(Math.sin(x * Math.PI) * x, 0.5)
@@ -1056,7 +1209,7 @@
         fun: function(x) {
           return Math.cos((x * Math.PI) / 2);
         },
-        col: "rgba(100,100,100,0.5)",
+        col: ink(0.5),
       });
       return canv;
     };
@@ -1100,7 +1253,7 @@
         canv += stroke(brklist, {
           wid: 0.8,
           noi: 0,
-          col: "rgba(100,100,100,0.4)",
+          col: ink(0.4),
           out: 0,
           fun: function(x) {
             return Math.sin((x + fr) * Math.PI * 3);
@@ -1129,7 +1282,7 @@
             len: 15,
             wid: 6 - Math.abs(p - 0.5) * 10,
             ang: (a0 + a1) / 2,
-            col: "rgba(100,100,100,0.6)",
+            col: ink(0.6),
           });
         } else {
           canv += bark(
@@ -1154,7 +1307,7 @@
                 wid: 4,
                 len: 4 + 6 * Math.random(),
                 ang: a0 + Math.PI / 2,
-                col: "rgba(100,100,100,0.6)",
+                col: ink(0.6),
               },
             );
           }
@@ -1182,7 +1335,7 @@
           rglist[i].map(function(v) {
             return [v[0] + x, v[1] + y];
           }),
-          { wid: 1.5, col: "rgba(100,100,100,0.7)", out: 0 },
+          { wid: 1.5, col: ink(0.7), out: 0 },
         );
       }
       return canv;
@@ -1192,7 +1345,7 @@
       var args = args != undefined ? args : {};
       var hei = args.hei != undefined ? args.hei : 300;
       var wid = args.wid != undefined ? args.wid : 6;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : ink(0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       var canv = "";
@@ -1251,7 +1404,7 @@
           trmlist.push(trlist[i]);
         }
       }
-      canv += poly(trmlist, { xof: x, yof: y, fil: "white", str: col, wid: 0 });
+      canv += poly(trmlist, { xof: x, yof: y, fil: fogMask(), str: ink(0.8), wid: 0 });
 
       trmlist.splice(0, 1);
       trmlist.splice(trmlist.length - 1, 1);
@@ -1260,8 +1413,7 @@
           return [v[0] + x, v[1] + y];
         }),
         {
-          col:
-            "rgba(100,100,100," + (0.4 + Math.random() * 0.1).toFixed(3) + ")",
+          col: ink((0.4 + Math.random() * 0.1).toFixed(3)),
           wid: 2.5,
           fun: function(x) {
             return Math.sin(1);
@@ -1280,7 +1432,7 @@
       var args = args != undefined ? args : {};
       var hei = args.hei != undefined ? args.hei : 300;
       var wid = args.wid != undefined ? args.wid : 5;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : ink(0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       var canv = "";
@@ -1346,7 +1498,7 @@
         }
       }
 
-      canv += poly(trmlist, { xof: x, yof: y, fil: "white", str: col, wid: 0 });
+      canv += poly(trmlist, { xof: x, yof: y, fil: fogMask(), str: ink(0.8), wid: 0 });
 
       trmlist.splice(0, 1);
       trmlist.splice(trmlist.length - 1, 1);
@@ -1355,8 +1507,7 @@
           return [v[0] + x, v[1] + y];
         }),
         {
-          col:
-            "rgba(100,100,100," + (0.4 + Math.random() * 0.1).toFixed(3) + ")",
+          col: ink((0.4 + Math.random() * 0.1).toFixed(3)),
           wid: 2.5,
           fun: function(x) {
             return Math.sin(1);
@@ -1375,7 +1526,7 @@
       var args = args != undefined ? args : {};
       var hei = args.hei != undefined ? args.hei : 100;
       var wid = args.wid != undefined ? args.wid : 6;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : ink(0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       var canv = "";
@@ -1462,7 +1613,7 @@
         ben: 0,
       });
 
-      canv += poly(trmlist, { xof: x, yof: y, fil: "white", str: col, wid: 0 });
+      canv += poly(trmlist, { xof: x, yof: y, fil: fogMask(), str: ink(0.8), wid: 0 });
 
       trmlist.splice(0, 1);
       trmlist.splice(trmlist.length - 1, 1);
@@ -1471,8 +1622,7 @@
           return [v[0] + x, v[1] + y];
         }),
         {
-          col:
-            "rgba(100,100,100," + (0.4 + Math.random() * 0.1).toFixed(3) + ")",
+          col: ink((0.4 + Math.random() * 0.1).toFixed(3)),
           wid: 2.5,
           fun: function(x) {
             return Math.sin(1);
@@ -1497,7 +1647,7 @@
           : function(x) {
               return Math.sqrt(x) * 0.2;
             };
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,1)";
+      var col = args.col != undefined ? args.col : jade(0.5, 1);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       reso = 10;
@@ -1512,7 +1662,7 @@
           .replace(")", "")
           .split(",");
       } else {
-        leafcol = ["100", "100", "100", "1"];
+        leafcol = ["69", "88", "73", "1"];
       }
       var canv = "";
       var line1 = [];
@@ -1573,7 +1723,7 @@
       for (var k = 0; k < T.length; k++) {
         var m = PolyTools.midPt(T[k]);
         var c = (Noise.noise(m[0] * 0.02, m[1] * 0.02) * 200 + 50) | 0;
-        var co = "rgba(" + c + "," + c + "," + c + ",0.8)";
+        var co = jade((c - 50) / 200, 0.8);
         canv += poly(T[k], { fil: co, str: co, wid: 0 });
       }
       return canv;
@@ -1583,7 +1733,7 @@
       var args = args != undefined ? args : {};
       var hei = args.hei != undefined ? args.hei : 80;
       var wid = args.wid != undefined ? args.wid : 1;
-      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.5)";
+      var col = args.col != undefined ? args.col : ink(0.5);
       var noi = args.noi != undefined ? args.noi : 0.5;
 
       var canv = "";
@@ -1647,7 +1797,7 @@
         tcanv += stroke(trmlist, {
           fun: fun,
           wid: 0.8,
-          col: "rgba(100,100,100,0.5)",
+          col: ink(0.5),
         });
         if (dep != 0) {
           var nben = ben + randChoice([-1, 1]) * Math.PI * 0.001 * dep * dep;
@@ -1699,15 +1849,14 @@
         }
       }
 
-      canv += poly(trlist, { xof: x, yof: y, fil: "white", str: col, wid: 0 });
+      canv += poly(trlist, { xof: x, yof: y, fil: fogMask(), str: ink(0.8), wid: 0 });
 
       canv += stroke(
         trlist.map(function(v) {
           return [v[0] + x, v[1] + y];
         }),
         {
-          col:
-            "rgba(100,100,100," + (0.6 + Math.random() * 0.1).toFixed(3) + ")",
+          col: ink((0.6 + Math.random() * 0.1).toFixed(3)),
           wid: 2.5,
           fun: function(x) {
             return Math.sin(1);
@@ -1780,7 +1929,7 @@
         canv += poly(ftlist[i], {
           xof: xof,
           yof: yof,
-          fil: "white",
+          fil: fogMask(),
           str: "none",
         });
       }
@@ -1790,10 +1939,7 @@
             return [x[0] + xof, x[1] + yof];
           }),
           {
-            col:
-              "rgba(100,100,100," +
-              (0.1 + Math.random() * 0.1).toFixed(3) +
-              ")",
+            col: fog(0.5, (0.1 + Math.random() * 0.1).toFixed(3)),
             wid: 1,
           },
         );
@@ -1808,7 +1954,7 @@
       var tex = args.tex != undefined ? args.tex : 200;
       var veg = args.veg != undefined ? args.veg : true;
       var ret = args.ret != undefined ? args.ret : 0;
-      var col = args.col != undefined ? args.col : undefined;
+      var col = args.col != undefined ? args.col : function(x) { return mountainCol(x, yoff); };
 
       seed = seed != undefined ? seed : 0;
 
@@ -1854,10 +2000,7 @@
       vegetate(
         function(x, y) {
           return Tree.tree02(x + xoff, y + yoff - 5, {
-            col:
-              "rgba(100,100,100," +
-              (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5).toFixed(3) +
-              ")",
+            col: jade(0.5, (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5).toFixed(3)),
             clu: 2,
           });
         },
@@ -1876,7 +2019,7 @@
       canv += poly(ptlist[0].concat([[0, reso[0] * 4]]), {
         xof: xoff,
         yof: yoff,
-        fil: "white",
+        fil: fogMask(),
         str: "none",
       });
       //OUTLINE
@@ -1884,7 +2027,7 @@
         ptlist[0].map(function(x) {
           return [x[0] + xoff, x[1] + yoff];
         }),
-        { col: "rgba(100,100,100,0.3)", noi: 1, wid: 3 },
+        { col: stone(0, 0.4), noi: 1, wid: 3 },
       );
 
       canv += foot(ptlist, { xof: xoff, yof: yoff });
@@ -1900,10 +2043,7 @@
       vegetate(
         function(x, y) {
           return Tree.tree02(x + xoff, y + yoff, {
-            col:
-              "rgba(100,100,100," +
-              (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5).toFixed(3) +
-              ")",
+            col: jade(0.5, (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5).toFixed(3)),
           });
         },
         function(i, j) {
@@ -1924,10 +2064,7 @@
             return Tree.tree01(x + xoff, y + yoff, {
               hei: ht,
               wid: Math.random() * 3 + 1,
-              col:
-                "rgba(100,100,100," +
-                (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3).toFixed(3) +
-                ")",
+              col: jade(0.3, (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3).toFixed(3)),
             });
           },
           function(i, j) {
@@ -1969,10 +2106,7 @@
               ben: function(x) {
                 return Math.pow(x * bc, bp);
               },
-              col:
-                "rgba(100,100,100," +
-                (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3).toFixed(3) +
-                ")",
+              col: jade(0.3, (Noise.noise(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3).toFixed(3)),
             });
           },
           function(i, j) {
@@ -2056,6 +2190,57 @@
         },
       );
 
+      // CLOUDS
+      vegetate(
+        function(x, y) {
+          return Extra.cloud01(x + xoff, y + yoff - h * 0.5 - 40, seed, {
+            len: 100 + Math.random() * 80,
+            wid: 15 + Math.random() * 15,
+          });
+        },
+        function(i, j) {
+          var ns = Noise.noise(i * 0.1, j * 0.1, seed + 100);
+          return i == 0 && j % 6 == 0 && ns * ns < 0.15;
+        },
+        function(veglist, i) {
+          return true;
+        },
+      );
+
+      // BIRDS
+      vegetate(
+        function(x, y) {
+          return Extra.bird01(x + xoff, y + yoff - h * 0.3 - 20, seed, {
+            sca: 0.8 + Math.random() * 0.5,
+            fli: Math.random() < 0.5,
+          });
+        },
+        function(i, j) {
+          var ns = Noise.noise(i * 0.2, j * 0.2, seed + 200);
+          return i == 0 && j % 4 == 0 && ns * ns * ns < 0.08;
+        },
+        function(veglist, i) {
+          return true;
+        },
+      );
+
+      // REEDS
+      vegetate(
+        function(x, y) {
+          return Extra.reeds01(x + xoff, y + yoff, seed, {
+            num: Math.floor(Math.random() * 5) + 4,
+            hei: 20 + Math.random() * 20,
+          });
+        },
+        function(i, j) {
+          var ns = Noise.noise(i * 0.3, j * 0.1, seed + 300);
+          return (j == 0 || j == ptlist[i].length - 1) && ns * ns < 0.1;
+        },
+        function(veglist, i) {
+          return true;
+        },
+      );
+
       //BOTT ROCK
       vegetate(
         function(x, y) {
@@ -2128,7 +2313,7 @@
       canv += poly(ptlist[0].concat([[0, reso[0] * 4]]), {
         xof: xoff,
         yof: yoff,
-        fil: "white",
+        fil: fogMask(),
         str: "none",
       });
       //OUTLINE
@@ -2136,7 +2321,7 @@
         ptlist[0].map(function(x) {
           return [x[0] + xoff, x[1] + yoff];
         }),
-        { col: "rgba(100,100,100,0.3)", noi: 1, wid: 3 },
+        { col: stone(0, 0.4), noi: 1, wid: 3 },
       );
 
       //canv += foot(ptlist,{xof:xoff,yof:yoff})
@@ -2196,12 +2381,12 @@
         xof: xoff,
         yof: yoff,
         str: "none",
-        fil: "white",
+        fil: fogMask(),
         wid: 2,
       });
       canv += stroke(grlist.map(x => [x[0] + xoff, x[1] + yoff]), {
         wid: 3,
-        col: "rgba(100,100,100,0.2)",
+        col: stone(0.2, 0.3),
       });
 
       var bound = function(plist) {
@@ -2407,8 +2592,7 @@
       }
       for (var i = 0; i < ptlist.length; i++) {
         var getCol = function(x, y) {
-          var c = (Noise.noise(x * 0.02, y * 0.02, yoff) * 55 + 200) | 0;
-          return "rgb(" + c + "," + c + "," + c + ")";
+          return slate(Noise.noise(x * 0.02, y * 0.02, yoff), 0.85);
         };
         canv += poly(ptlist[i], {
           fil: getCol(...ptlist[i][ptlist[i].length - 1]),
@@ -2485,7 +2669,7 @@
       canv += poly(ptlist[0].concat([[0, 0]]), {
         xof: xoff,
         yof: yoff,
-        fil: "white",
+        fil: fogMask(),
         str: "none",
       });
       //OUTLINE
@@ -2493,7 +2677,7 @@
         ptlist[0].map(function(x) {
           return [x[0] + xoff, x[1] + yoff];
         }),
-        { col: "rgba(100,100,100,0.3)", noi: 1, wid: 3 },
+        { col: ink(0.5), noi: 1, wid: 3 },
       );
       canv += texture(ptlist, {
         xof: xoff,
@@ -2502,9 +2686,7 @@
         wid: 3,
         sha: sha,
         col: function(x) {
-          return (
-            "rgba(180,180,180," + (0.3 + Math.random() * 0.3).toFixed(3) + ")"
-          );
+          return stone(1 - x, (0.3 + Math.random() * 0.3).toFixed(3));
         },
         dis: function() {
           if (Math.random() > 0.5) {
@@ -2563,20 +2745,20 @@
         ptlist[0]
           .slice(0, -1)
           .concat(ptlist[ptlist.length - 1].slice(0, -1).reverse()),
-        { xof: xoff, yof: yoff, fil: "white", str: "none" },
+        { xof: xoff, yof: yoff, fil: fogMask(), str: "none" },
       );
       canv += poly(ptlist[0], {
         xof: xoff,
         yof: yoff,
         fil: "none",
-        str: "rgba(100,100,100,0.3)",
+        str: ink(0.4),
         wid: 2,
       });
       canv += poly(ptlist[ptlist.length - 1], {
         xof: xoff,
         yof: yoff,
         fil: "none",
-        str: "rgba(100,100,100,0.3)",
+        str: ink(0.4),
         wid: 2,
       });
 
@@ -2664,7 +2846,7 @@
           xof: xoff,
           yof: yoff,
           str: "none",
-          fil: "white",
+          fil: fogMask(),
         });
       }
 
@@ -2674,7 +2856,7 @@
             return [x[0] + xoff, x[1] + yoff];
           }),
           {
-            col: "rgba(100,100,100,0.4)",
+            col: ink(0.5),
             noi: 1,
             wid: wei,
             fun: function(x) {
@@ -2813,7 +2995,7 @@
             xof: xoff,
             yof: yoff,
             fil: "none",
-            str: "rgba(100,100,100,0.5)",
+            str: ink(0.5),
             wid: 2,
           });
         }
@@ -2825,7 +3007,7 @@
             return [x[0] + xoff, x[1] + yoff];
           }),
           {
-            col: "rgba(100,100,100,0.5)",
+            col: ink(0.5),
             noi: 0.5,
             wid: wei,
             fun: function(x) {
@@ -2908,7 +3090,7 @@
         [wid * 0.5, 0],
         [mid, per],
       ]);
-      canv += poly(polist, { xof: xoff, yof: yoff, str: "none", fil: "white" });
+      canv += poly(polist, { xof: xoff, yof: yoff, str: "none", fil: fogMask() });
 
       for (var i = 0; i < ptlist.length; i++) {
         canv += stroke(
@@ -2916,7 +3098,7 @@
             return [x[0] + xoff, x[1] + yoff];
           }),
           {
-            col: "rgba(100,100,100,0.4)",
+            col: ink(0.5),
             noi: 1,
             wid: wei,
             fun: function(x) {
@@ -2941,7 +3123,9 @@
           "<text font-size='" +
           hei * 0.6 +
           "' font-family='Verdana'" +
-          " style='fill:rgba(100,100,100,0.9)'" +
+          " style='fill:" +
+          ink(0.9) +
+          "'" +
           " text-anchor='middle' transform='translate(" +
           (mp[0] + xoff) +
           "," +
@@ -2979,14 +3163,14 @@
         polist.push([fxx, fy]);
       }
 
-      canv += poly(polist, { xof: xoff, yof: yoff, str: "none", fil: "white" });
+      canv += poly(polist, { xof: xoff, yof: yoff, str: "none", fil: fogMask() });
       for (var i = 0; i < ptlist.length; i++) {
         canv += stroke(
           div(ptlist[i], 5).map(function(x) {
             return [x[0] + xoff, x[1] + yoff];
           }),
           {
-            col: "rgba(100,100,100,0.4)",
+            col: ink(0.5),
             noi: 1,
             wid: wei,
             fun: function(x) {
@@ -3113,7 +3297,23 @@
           pla: pla,
         });
 
+        if (Math.random() < 0.6) {
+          canv += Extra.lantern01(
+            xoff - (wid * Math.pow(0.85, i)) * 0.4,
+            yoff - hoff - hei * 0.3,
+            seed
+          );
+          canv += Extra.lantern01(
+            xoff + (wid * Math.pow(0.85, i)) * 0.4,
+            yoff - hoff - hei * 0.3,
+            seed
+          );
+        }
+
         hoff += hei * 1.5;
+      }
+      if (Math.random() < 0.5) {
+        canv += Extra.flag01(xoff, yoff - hoff, seed, { hei: 20 });
       }
       return canv;
     };
@@ -3157,7 +3357,23 @@
           wei: 1.5,
           per: per,
         });
+        if (Math.random() < 0.6) {
+          canv += Extra.lantern01(
+            xoff - (wid * Math.pow(0.85, i)) * 0.4,
+            yoff - hoff - hei * 0.3,
+            seed
+          );
+          canv += Extra.lantern01(
+            xoff + (wid * Math.pow(0.85, i)) * 0.4,
+            yoff - hoff - hei * 0.3,
+            seed
+          );
+        }
+
         hoff += hei * 1.5;
+      }
+      if (Math.random() < 0.5) {
+        canv += Extra.flag01(xoff, yoff - hoff, seed, { hei: 20 });
       }
       return canv;
     };
@@ -3235,13 +3451,13 @@
         plist2.push([i * dir, fun2(i / len)]);
       }
       var plist = plist1.concat(plist2.reverse());
-      canv += poly(plist, { xof: xoff, yof: yoff, fil: "white" });
+      canv += poly(plist, { xof: xoff, yof: yoff, fil: fogMask() });
       canv += stroke(plist.map(v => [xoff + v[0], yoff + v[1]]), {
         wid: 1,
         fun: function(x) {
           return Math.sin(x * Math.PI * 2);
         },
-        col: "rgba(100,100,100,0.4)",
+        col: ink(0.5),
       });
 
       return canv;
@@ -3261,7 +3477,7 @@
         return stroke(div(pl, 5).map(toGlobal), {
           wid: 1,
           fun: x => 0.5,
-          col: "rgba(100,100,100,0.4)",
+          col: ink(0.5),
         });
       };
 
@@ -3429,7 +3645,7 @@
             [-0.65, 0.5],
           ]),
         ),
-        { fil: "rgba(100,100,100,0.8)" },
+        { fil: ink(0.8) },
       );
 
       var qlist1 = [];
@@ -3440,7 +3656,7 @@
         ]);
       }
       canv += poly(tranpoly(p0, p1, f(qlist1)), {
-        str: "rgba(100,100,100,0.8)",
+        str: ink(0.8),
         wid: 1,
       });
 
@@ -3479,7 +3695,7 @@
             [0.3, 0.5],
           ]),
         ),
-        { fil: "rgba(100,100,100,0.8)" },
+        { fil: ink(0.8) },
       );
       return canv;
     };
@@ -3505,7 +3721,7 @@
         ]);
       }
       canv += poly(tranpoly(p0, p1, f(qlist1)), {
-        str: "rgba(100,100,100,0.5)",
+        str: ink(0.5),
         wid: 1,
       });
 
@@ -3609,15 +3825,15 @@
         var tlist = bezmh(plist, 2);
         var [tlist1, tlist2] = expand(tlist, fun);
         canv += poly(tlist1.concat(tlist2.reverse()).map(toGlobal), {
-          fil: "white",
+          fil: fogMask(),
         });
         canv += stroke(tlist1.map(toGlobal), {
           wid: 1,
-          col: "rgba(100,100,100,0.5)",
+          col: ink(0.5),
         });
         canv += stroke(tlist2.map(toGlobal), {
           wid: 1,
-          col: "rgba(100,100,100,0.6)",
+          col: ink(0.6),
         });
 
         return canv;
@@ -3655,11 +3871,167 @@
       hlist1.splice(0, Math.floor(hlist1.length * 0.1));
       hlist2.splice(0, Math.floor(hlist2.length * 0.95));
       canv += poly(hlist1.concat(hlist2.reverse()).map(toGlobal), {
-        fil: "rgba(100,100,100,0.6)",
+        fil: ink(0.6),
       });
 
       canv += hat(toGlobal(pts[1]), toGlobal(pts[2]), { fli: fli });
 
+      return canv;
+    };
+  }();
+
+
+  var Extra = new function() {
+    this.cloud01 = function(x, y, seed, args) {
+      var args = args != undefined ? args : {};
+      var len = args.len != undefined ? args.len : 120;
+      var wid = args.wid != undefined ? args.wid : 20;
+      var col = args.col != undefined ? args.col : "rgba(100,100,100,0.15)";
+      var noi = args.noi != undefined ? args.noi : 0.4;
+      var num = args.num != undefined ? args.num : Math.floor(Math.random() * 3) + 3;
+
+      var canv = "";
+      for (var i = 0; i < num; i++) {
+        var ox = (Math.random() - 0.5) * len * 0.5;
+        var oy = (Math.random() - 0.5) * wid * 0.5;
+        var l = len * (0.6 + Math.random() * 0.4);
+        var w = wid * (0.6 + Math.random() * 0.4);
+        var a = (Math.random() - 0.5) * 0.1;
+        canv += blob(x + ox, y + oy, {
+          len: l,
+          wid: w,
+          ang: a,
+          col: col,
+          noi: noi,
+        });
+      }
+      return canv;
+    };
+
+    this.bird01 = function(x, y, seed, args) {
+      var args = args != undefined ? args : {};
+      var sca = args.sca != undefined ? args.sca : 1;
+      var wid = args.wid != undefined ? args.wid : 1.5;
+      var col = args.col != undefined ? args.col : "rgba(60,60,60,0.7)";
+      var noi = args.noi != undefined ? args.noi : 0.2;
+      var fli = args.fli != undefined ? args.fli : false;
+
+      var dir = fli ? -1 : 1;
+      var span = 10 * sca;
+      var dip = 5 * sca;
+
+      var wingL = div(
+        [
+          [x - span * dir, y - dip],
+          [x - span * 0.5 * dir, y + dip * 0.5],
+          [x, y],
+        ],
+        4,
+      );
+      var wingR = div(
+        [
+          [x, y],
+          [x + span * 0.5 * dir, y + dip * 0.5],
+          [x + span * dir, y - dip],
+        ],
+        4,
+      );
+
+      var canv = "";
+      canv += stroke(wingL, { wid: wid, col: col, noi: noi });
+      canv += stroke(wingR, { wid: wid, col: col, noi: noi });
+      return canv;
+    };
+
+    this.reeds01 = function(x, y, seed, args) {
+      var args = args != undefined ? args : {};
+      var num = args.num != undefined ? args.num : 6;
+      var hei = args.hei != undefined ? args.hei : 40;
+      var wid = args.wid != undefined ? args.wid : 2;
+      var col = args.col != undefined ? args.col : "rgba(70,70,60,0.6)";
+      var noi = args.noi != undefined ? args.noi : 0.3;
+
+      var canv = "";
+      for (var i = 0; i < num; i++) {
+        var ox = (i - num / 2) * 4 + (Math.random() - 0.5) * 3;
+        var h = hei * (0.7 + Math.random() * 0.6);
+        var bend = (Math.random() - 0.5) * 15;
+        var ptlist = div(
+          [
+            [x + ox, y],
+            [x + ox + bend * 0.5, y - h * 0.5],
+            [x + ox + bend, y - h],
+          ],
+          5,
+        );
+        canv += stroke(ptlist, {
+          wid: wid,
+          col: col,
+          noi: noi,
+          fun: function(p) {
+            return 1 - p;
+          },
+        });
+      }
+      return canv;
+    };
+
+    this.lantern01 = function(x, y, seed, args) {
+      var args = args != undefined ? args : {};
+      var rad = args.rad != undefined ? args.rad : 6;
+      var hlen = args.hlen != undefined ? args.hlen : 12;
+      var fil = args.fil != undefined ? args.fil : "rgba(140,130,120,0.6)";
+      var str = args.str != undefined ? args.str : "rgba(40,40,40,0.8)";
+      var col = args.col != undefined ? args.col : "rgba(50,50,50,0.8)";
+
+      var canv = "";
+      var line = div([[x, y], [x, y + hlen]], 3);
+      canv += stroke(line, { wid: 1, col: col, noi: 0.1 });
+
+      var plist = [];
+      var cy = y + hlen + rad;
+      for (var i = 0; i < 8; i++) {
+        var a = (i * Math.PI) / 4 + Math.PI / 8;
+        plist.push([x + rad * Math.cos(a), cy + rad * Math.sin(a)]);
+      }
+      canv += poly(plist, { fil: fil, str: str, wid: 1 });
+
+      var tassel = div([[x, cy + rad], [x, cy + rad + hlen * 0.5]], 3);
+      canv += stroke(tassel, { wid: 1, col: col, noi: 0.1 });
+
+      return canv;
+    };
+
+    this.flag01 = function(x, y, seed, args) {
+      var args = args != undefined ? args : {};
+      var hei = args.hei != undefined ? args.hei : 40;
+      var fw = args.fw != undefined ? args.fw : 25;
+      var fhei = args.fhei != undefined ? args.fhei : 15;
+      var col = args.col != undefined ? args.col : "rgba(60,60,60,0.8)";
+      var fil = args.fil != undefined ? args.fil : "rgba(100,100,100,0.5)";
+      var str = args.str != undefined ? args.str : "rgba(40,40,40,0.8)";
+
+      seed = seed != undefined ? seed : 0;
+      var canv = "";
+
+      var mast = div([[x, y], [x, y - hei]], 5);
+      canv += stroke(mast, { wid: 1.5, col: col, noi: 0.2 });
+
+      var pTop = [x, y - hei];
+      var pTip = [x + fw, y - hei + fhei * 0.5];
+      var pBot = [x, y - hei + fhei];
+
+      var seg1 = div([pTop, pTip], 5);
+      var seg2 = div([pTip, pBot], 5);
+      var seg3 = div([pBot, pTop], 3);
+
+      var clothPts = seg1.concat(seg2).concat(seg3);
+      for (var i = 0; i < clothPts.length; i++) {
+        var ns = Noise.noise(clothPts[i][0] * 0.1, clothPts[i][1] * 0.1, seed);
+        clothPts[i][1] += (ns - 0.5) * 4;
+      }
+
+      canv += poly(clothPts, { fil: fil, str: str, wid: 1 });
       return canv;
     };
   }();
@@ -3694,7 +4066,7 @@
         }),
         {
           col:
-            "rgba(100,100,100," + (0.3 + Math.random() * 0.3).toFixed(3) + ")",
+            slate(Math.random(), (0.3 + Math.random() * 0.3).toFixed(3)),
           wid: 1,
         },
       );
@@ -3842,6 +4214,22 @@
     }
   }
 
+  var PARALLAX_LAYERS = [
+    "parallax-atmosphere",
+    "parallax-background",
+    "parallax-midground",
+    "parallax-near",
+    "foreground"
+  ];
+
+  function getLayerId(depth) {
+    if (depth >= 0.8) return "parallax-atmosphere";
+    if (depth >= 0.6) return "parallax-background";
+    if (depth >= 0.4) return "parallax-midground";
+    if (depth >= 0.2) return "parallax-near";
+    return "foreground";
+  }
+
   function chunkloader(xmin, xmax) {
     var add = function(nch) {
       if (nch.canv.includes("NaN")) {
@@ -3886,18 +4274,20 @@
       }
 
       for (var i = 0; i < plan.length; i++) {
+        var d = getDepth(plan[i].tag, plan[i].y);
         if (plan[i].tag == "mount") {
           add({
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
-            canv: Mount.mountain(plan[i].x, plan[i].y, i * 2 * Math.random()),
-            //{col:function(x){return "rgba(100,100,100,"+(0.5*Math.random()*plan[i].y/MEM.windy)+")"}}),
+            depth: d,
+            canv: Mount.mountain(plan[i].x, plan[i].y, i * 2 * Math.random(), { depth: d }),
           });
           add({
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y - 10000,
+            depth: d,
             canv: water(plan[i].x, plan[i].y, i * 2),
           });
         } else if (plan[i].tag == "flatmount") {
@@ -3905,6 +4295,7 @@
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
+            depth: d,
             canv: Mount.flatMount(
               plan[i].x,
               plan[i].y,
@@ -3921,6 +4312,7 @@
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
+            depth: d,
             canv: Mount.distMount(plan[i].x, plan[i].y, Math.random() * 100, {
               hei: 150,
               len: randChoice([500, 1000, 1500]),
@@ -3931,6 +4323,7 @@
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
+            depth: d,
             canv: Arch.boat01(plan[i].x, plan[i].y, Math.random(), {
               sca: plan[i].y / 800,
               fli: randChoice([true, false]),
@@ -3941,6 +4334,7 @@
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
+            depth: d,
             canv:
               "<circle cx='" +
               plan[i].x +
@@ -3953,6 +4347,7 @@
             tag: plan[i].tag,
             x: plan[i].x,
             y: plan[i].y,
+            depth: d,
             canv:
               "<circle cx='" +
               plan[i].x +
@@ -3961,26 +4356,46 @@
               "' r='20' stroke='black' fill='green' />",
           });
         }
-        // add ({
-        //   x: plan[i].x,
-        //   y: plan[i].y,
-        //   canv:"<circle cx='"+plan[i].x+"' cy='"+plan[i].y+"' r='20' stroke='black' fill='red' />"
-        // })
       }
     }
   }
 
   function chunkrender(xmin, xmax) {
-    MEM.canv = "";
+    var layersContent = {
+      "parallax-atmosphere": "",
+      "parallax-background": "",
+      "parallax-midground": "",
+      "parallax-near": "",
+      "foreground": ""
+    };
 
     for (var i = 0; i < MEM.chunks.length; i++) {
+      var ch = MEM.chunks[i];
       if (
-        xmin - MEM.cwid < MEM.chunks[i].x &&
-        MEM.chunks[i].x < xmax + MEM.cwid
+        xmin - MEM.cwid < ch.x &&
+        ch.x < xmax + MEM.cwid
       ) {
-        MEM.canv += MEM.chunks[i].canv;
+        var d = ch.depth !== undefined ? ch.depth : getDepth(ch.tag, ch.y);
+        var layerId = getLayerId(d);
+        layersContent[layerId] += ch.canv;
       }
     }
+
+    var layerStyles = {
+      "parallax-atmosphere": "opacity: 0.65; filter: contrast(0.75) saturate(0.7);",
+      "parallax-background": "opacity: 0.82; filter: contrast(0.88) saturate(0.85);",
+      "parallax-midground": "opacity: 0.92;",
+      "parallax-near": "opacity: 0.98;",
+      "foreground": "opacity: 1.0;"
+    };
+
+    var fullCanv = "";
+    for (var l = 0; l < PARALLAX_LAYERS.length; l++) {
+      var id = PARALLAX_LAYERS[l];
+      var st = layerStyles[id] ? " style='" + layerStyles[id] + "'" : "";
+      fullCanv += "<g id='" + id + "'" + st + ">" + layersContent[id] + "</g>";
+    }
+    MEM.canv = fullCanv;
   }
 
   document.addEventListener("mousemove", onMouseUpdate, false);
@@ -3991,6 +4406,65 @@
     mouseX = e.pageX;
     mouseY = e.pageY;
   }
+
+  var PARALLAX_FACTORS = {
+    "parallax-atmosphere": 0.05,
+    "parallax-background": 0.15,
+    "parallax-midground": 0.35,
+    "parallax-near": 0.60,
+    "foreground": 0.85
+  };
+
+  var ticking = false;
+  var currentScrollY = 0;
+
+  function isReducedMotionPreferred() {
+    if (typeof PARALLAX_MODE !== "undefined" && PARALLAX_MODE === 0) {
+      return true;
+    }
+    if (typeof window !== "undefined" && window.location) {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("parallax") === "0" || params.get("parallax") === "false") {
+          return true;
+        }
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  function updateParallax(sy) {
+    if (isReducedMotionPreferred()) {
+      for (var l = 0; l < PARALLAX_LAYERS.length; l++) {
+        var el = document.getElementById(PARALLAX_LAYERS[l]);
+        if (el) {
+          el.style.transform = "none";
+        }
+      }
+      return;
+    }
+    for (var l = 0; l < PARALLAX_LAYERS.length; l++) {
+      var layerId = PARALLAX_LAYERS[l];
+      var factor = PARALLAX_FACTORS[layerId] || 0;
+      var offsetY = (sy * (0.85 - factor)).toFixed(2);
+      var offsetX = layerId === "parallax-atmosphere" ? (Math.sin(sy * 0.005) * 10).toFixed(2) : "0";
+      var el = document.getElementById(layerId);
+      if (el) {
+        el.style.transform = "translate3d(" + offsetX + "px, " + offsetY + "px, 0px)";
+      }
+    }
+  }
+
+  window.addEventListener("scroll", function() {
+    currentScrollY = window.scrollY || window.pageYOffset || 0;
+    if (!ticking) {
+      requestAnimationFrame(function() {
+        updateParallax(currentScrollY);
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
 
   function calcViewBox() {
     var zoom = 1.142;
@@ -4025,7 +4499,9 @@
       MEM.windx +
       "' height='" +
       MEM.windy +
-      "' style='mix-blend-mode:multiply;'" +
+      "' style='mix-blend-mode:multiply; background-color:" +
+      fogMask() +
+      ";'" +
       "viewBox = '" +
       calcViewBox() +
       "'" +
@@ -4036,6 +4512,7 @@
       //+ "<circle cx='0' cy='0' r='50' stroke='black' fill='red' />"
       "</g></svg>";
 
+    updateParallax(window.scrollY || window.pageYOffset || 0);
     //setTimeout(update,1000);
   }
 </script>
@@ -4132,7 +4609,7 @@
   var btnHoverCol = "rgba(0,0,0,0.1)";
 </script>
 
-<body style="margin:0">
+<body style="margin:0; min-height: 2400px;">
   <div
     id="SETTING"
     style="
@@ -4283,7 +4760,7 @@
     </script>
   </div>
 
-  <table style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+  <table style="border-bottom: 1px solid rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10;">
     <tr>
       <td>
         <div
